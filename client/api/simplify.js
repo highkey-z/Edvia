@@ -20,8 +20,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    // Use Hugging Face API for text simplification
-    const simplifiedText = await simplifyWithHuggingFace(text, readingLevel);
+    // Use Cohere API for text simplification
+    const simplifiedText = await simplifyWithCohere(text, readingLevel);
     const vocabulary = extractVocabulary(text, readingLevel);
 
     res.json({
@@ -50,39 +50,39 @@ export default async function handler(req, res) {
   }
 }
 
-// Hugging Face API text simplification
-async function simplifyWithHuggingFace(text, level) {
+// Cohere API text simplification
+async function simplifyWithCohere(text, level) {
   try {
     // Create a prompt for text simplification
     const prompt = createSimplificationPrompt(text, level);
     
-    const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium', {
+    const response = await fetch('https://api.cohere.ai/v1/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.COHERE_API_KEY || 'demo-key'}`
       },
       body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          max_length: Math.min(text.length * 2, 512),
-          temperature: 0.7,
-          do_sample: true,
-          top_p: 0.9
-        }
+        model: 'command',
+        prompt: prompt,
+        max_tokens: Math.min(text.length * 2, 500),
+        temperature: 0.7,
+        k: 0,
+        p: 0.9,
+        frequency_penalty: 0.1,
+        presence_penalty: 0.1,
+        stop_sequences: ['\n\nOriginal text:', '\n\n---']
       })
     });
 
     if (!response.ok) {
-      throw new Error(`Hugging Face API error: ${response.status}`);
+      throw new Error(`Cohere API error: ${response.status}`);
     }
 
     const data = await response.json();
     
-    if (data && data.length > 0 && data[0].generated_text) {
-      // Extract the simplified text from the response
-      const generatedText = data[0].generated_text;
-      // Remove the prompt from the response
-      const simplifiedText = generatedText.replace(prompt, '').trim();
+    if (data && data.generations && data.generations.length > 0) {
+      const simplifiedText = data.generations[0].text.trim();
       return simplifiedText || text;
     }
     
@@ -90,7 +90,7 @@ async function simplifyWithHuggingFace(text, level) {
     return text;
     
   } catch (error) {
-    console.error('Hugging Face API error:', error);
+    console.error('Cohere API error:', error);
     throw error;
   }
 }
@@ -98,14 +98,14 @@ async function simplifyWithHuggingFace(text, level) {
 // Create a prompt for text simplification based on reading level
 function createSimplificationPrompt(text, level) {
   const levelInstructions = {
-    'grade3': 'Simplify this text for a 3rd grader. Use simple words and short sentences:',
-    'middle-school': 'Simplify this text for middle school students. Use clear language and medium-length sentences:',
-    'high-school': 'Simplify this text for high school students. Keep most complex words but make it clearer:',
-    'college': 'Make this text more readable for college students. Keep the original meaning but improve clarity:'
+    'grade3': 'Rewrite this text for a 3rd grader. Use simple words, short sentences, and easy concepts. Keep the main idea the same:',
+    'middle-school': 'Rewrite this text for middle school students. Use clear language, medium-length sentences, and explain complex terms:',
+    'high-school': 'Rewrite this text for high school students. Keep most complex words but make the structure clearer and easier to follow:',
+    'college': 'Rewrite this text for college students. Keep the original meaning but improve clarity and flow:'
   };
   
   const instruction = levelInstructions[level] || levelInstructions['middle-school'];
-  return `${instruction}\n\nOriginal text: "${text}"\n\nSimplified text:`;
+  return `${instruction}\n\nText to rewrite: "${text}"\n\nRewritten text:`;
 }
 
 // Advanced text simplification function with different levels
