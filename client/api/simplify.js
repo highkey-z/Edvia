@@ -20,8 +20,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    // Use a simple text simplification algorithm (no external API needed)
-    const simplifiedText = simplifyText(text, readingLevel);
+    // Use Hugging Face API for text simplification
+    const simplifiedText = await simplifyWithHuggingFace(text, readingLevel);
     const vocabulary = extractVocabulary(text, readingLevel);
 
     res.json({
@@ -31,11 +31,81 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).json({ 
-      error: 'Failed to process text',
-      message: error.message 
-    });
+    
+    // Fallback to local simplification if API fails
+    try {
+      const simplifiedText = simplifyText(text, readingLevel);
+      const vocabulary = extractVocabulary(text, readingLevel);
+      
+      res.json({
+        simplifiedText: simplifiedText,
+        vocabulary: vocabulary
+      });
+    } catch (fallbackError) {
+      res.status(500).json({ 
+        error: 'Failed to process text',
+        message: error.message 
+      });
+    }
   }
+}
+
+// Hugging Face API text simplification
+async function simplifyWithHuggingFace(text, level) {
+  try {
+    // Create a prompt for text simplification
+    const prompt = createSimplificationPrompt(text, level);
+    
+    const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        inputs: prompt,
+        parameters: {
+          max_length: Math.min(text.length * 2, 512),
+          temperature: 0.7,
+          do_sample: true,
+          top_p: 0.9
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Hugging Face API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data && data.length > 0 && data[0].generated_text) {
+      // Extract the simplified text from the response
+      const generatedText = data[0].generated_text;
+      // Remove the prompt from the response
+      const simplifiedText = generatedText.replace(prompt, '').trim();
+      return simplifiedText || text;
+    }
+    
+    // If no generated text, return original
+    return text;
+    
+  } catch (error) {
+    console.error('Hugging Face API error:', error);
+    throw error;
+  }
+}
+
+// Create a prompt for text simplification based on reading level
+function createSimplificationPrompt(text, level) {
+  const levelInstructions = {
+    'grade3': 'Simplify this text for a 3rd grader. Use simple words and short sentences:',
+    'middle-school': 'Simplify this text for middle school students. Use clear language and medium-length sentences:',
+    'high-school': 'Simplify this text for high school students. Keep most complex words but make it clearer:',
+    'college': 'Make this text more readable for college students. Keep the original meaning but improve clarity:'
+  };
+  
+  const instruction = levelInstructions[level] || levelInstructions['middle-school'];
+  return `${instruction}\n\nOriginal text: "${text}"\n\nSimplified text:`;
 }
 
 // Advanced text simplification function with different levels
