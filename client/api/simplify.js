@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  if (req.method !== 'POST') {
+    if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -20,14 +20,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    // Use local simplification algorithm (reliable and works)
-    const simplifiedText = simplifyText(text, readingLevel);
-    const vocabulary = extractVocabulary(text, readingLevel);
+    // Check for OpenAI API key
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    if (!openaiApiKey) {
+      console.log('No OpenAI API key found, using local algorithm');
+      const simplifiedText = simplifyText(text, readingLevel);
+      const vocabulary = extractVocabulary(text, readingLevel);
+      return res.json({
+        simplifiedText: simplifiedText,
+        vocabulary: vocabulary
+      });
+    }
 
-    res.json({
-      simplifiedText: simplifiedText,
-      vocabulary: vocabulary
-    });
+    // Use OpenAI for text simplification
+    const result = await simplifyWithOpenAI(text, readingLevel, includeSummary);
+    res.json(result);
 
   } catch (error) {
     console.error('Error:', error);
@@ -35,6 +42,74 @@ export default async function handler(req, res) {
       error: 'Failed to process text',
       message: error.message 
     });
+  }
+}
+
+// OpenAI API text simplification
+async function simplifyWithOpenAI(text, level, includeSummary = false) {
+  try {
+    console.log('🔍 Starting OpenAI API call...');
+    
+    const levelInstructions = {
+      'grade3': 'Rewrite this text for a 3rd grade reading level. Use very simple words, short sentences, and basic vocabulary. Make it easy for young children to understand.',
+      'middle-school': 'Rewrite this text for a middle school reading level. Use clear, simple language with moderate complexity. Make it appropriate for 6th-8th grade students.',
+      'high-school': 'Rewrite this text for a high school reading level. Use clear language with some advanced vocabulary. Make it appropriate for 9th-12th grade students.',
+      'college': 'Rewrite this text for a college reading level. Use clear, sophisticated language while maintaining the original meaning and complexity.'
+    };
+
+    const instruction = levelInstructions[level] || levelInstructions['middle-school'];
+    
+    const prompt = `${instruction}
+
+Original text: "${text}"
+
+Simplified text:`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert at simplifying text for different reading levels. Always maintain the original meaning while making the text appropriate for the target reading level.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 1000,
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('OpenAI API error:', response.status, errorData);
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ OpenAI API response received');
+    
+    const simplifiedText = data.choices[0].message.content.trim();
+    
+    // Extract vocabulary from original text
+    const vocabulary = extractVocabulary(text, level);
+    
+    return {
+      simplifiedText: simplifiedText,
+      vocabulary: vocabulary
+    };
+
+  } catch (error) {
+    console.error('❌ OpenAI API error:', error);
+    throw error;
   }
 }
 
