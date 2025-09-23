@@ -14,11 +14,17 @@ export default async function handler(req, res) {
   }
 
   try {
+    console.log('🚀 Function started');
+    console.log('📝 Request body:', req.body);
+    
     const { text, readingLevel = 'middle-school', includeSummary = false } = req.body;
 
     if (!text) {
       return res.status(400).json({ error: 'Text is required' });
     }
+
+    console.log('✅ Text received:', text.substring(0, 50) + '...');
+    console.log('🎯 Reading level:', readingLevel);
 
     // Check if API key is present
     if (!process.env.COHERE_API_KEY) {
@@ -29,9 +35,13 @@ export default async function handler(req, res) {
       });
     }
 
+    console.log('✅ API key found');
+
     // Use Cohere API for text simplification
     const simplifiedText = await simplifyWithCohere(text, readingLevel);
     const vocabulary = extractVocabulary(text, readingLevel);
+
+    console.log('✅ Processing complete');
 
     res.json({
       simplifiedText: simplifiedText,
@@ -39,18 +49,20 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('❌ Main error:', error);
     
     // Fallback to local simplification if API fails
     try {
-      const simplifiedText = simplifyText(text, readingLevel);
-      const vocabulary = extractVocabulary(text, readingLevel);
+      console.log('🔄 Trying fallback...');
+      const simplifiedText = simplifyText(req.body.text, req.body.readingLevel || 'middle-school');
+      const vocabulary = extractVocabulary(req.body.text, req.body.readingLevel || 'middle-school');
       
       res.json({
         simplifiedText: simplifiedText,
         vocabulary: vocabulary
       });
     } catch (fallbackError) {
+      console.error('❌ Fallback error:', fallbackError);
       res.status(500).json({ 
         error: 'Failed to process text',
         message: error.message 
