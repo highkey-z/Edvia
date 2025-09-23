@@ -20,6 +20,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
+    // Check if API key is present
+    if (!process.env.COHERE_API_KEY) {
+      console.error('❌ COHERE_API_KEY not found in environment variables');
+      return res.status(500).json({ 
+        error: 'API key not configured',
+        message: 'Cohere API key is missing from environment variables'
+      });
+    }
+
     // Use Cohere API for text simplification
     const simplifiedText = await simplifyWithCohere(text, readingLevel);
     const vocabulary = extractVocabulary(text, readingLevel);
@@ -53,14 +62,20 @@ export default async function handler(req, res) {
 // Cohere API text simplification
 async function simplifyWithCohere(text, level) {
   try {
+    console.log('🔍 Starting Cohere API call...');
+    console.log('🔑 API Key present:', !!process.env.COHERE_API_KEY);
+    console.log('📝 Text length:', text.length);
+    console.log('🎯 Level:', level);
+    
     // Create a prompt for text simplification
     const prompt = createSimplificationPrompt(text, level);
+    console.log('📋 Prompt:', prompt.substring(0, 100) + '...');
     
     const response = await fetch('https://api.cohere.ai/v1/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.COHERE_API_KEY || 'demo-key'}`
+        'Authorization': `Bearer ${process.env.COHERE_API_KEY}`
       },
       body: JSON.stringify({
         model: 'command',
@@ -75,22 +90,28 @@ async function simplifyWithCohere(text, level) {
       })
     });
 
+    console.log('📡 Response status:', response.status);
+    
     if (!response.ok) {
-      throw new Error(`Cohere API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('❌ Cohere API error response:', errorText);
+      throw new Error(`Cohere API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('✅ Cohere API response received');
     
     if (data && data.generations && data.generations.length > 0) {
       const simplifiedText = data.generations[0].text.trim();
+      console.log('📝 Simplified text:', simplifiedText.substring(0, 100) + '...');
       return simplifiedText || text;
     }
     
-    // If no generated text, return original
+    console.log('⚠️ No generated text, returning original');
     return text;
     
   } catch (error) {
-    console.error('Cohere API error:', error);
+    console.error('❌ Cohere API error:', error);
     throw error;
   }
 }
