@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: 'https://edvia.onrender.com/api',
+  baseURL: '/api',
   timeout: 30000, // 30 second timeout for AI processing
   headers: {
     'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ api.interceptors.response.use(
  */
 export const processText = async (data) => {
   try {
-    const response = await api.post('/text/process', data);
+    const response = await api.post('/simplify', data);
     return response.data;
   } catch (error) {
     console.error('Error processing text:', error);
