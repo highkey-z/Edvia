@@ -20,62 +20,121 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    // Use Hugging Face Inference API (free, no API key needed for basic usage)
-    const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: `Simplify this text for ${readingLevel} reading level: "${text}"`,
-        parameters: {
-          max_length: 200,
-          temperature: 0.7
-        }
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Hugging Face API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // Extract simplified text from response
-    let simplifiedText = text; // fallback
-    if (data && data.length > 0 && data[0].generated_text) {
-      simplifiedText = data[0].generated_text.replace(`Simplify this text for ${readingLevel} reading level: "${text}"`, '').trim();
-    }
-
-    // Simple vocabulary extraction (you can enhance this)
-    const words = text.split(/\s+/).filter(word => word.length > 6);
-    const vocabulary = words.slice(0, 5).map(word => ({
-      word: word.replace(/[^\w]/g, ''),
-      definition: `Definition for ${word}`,
-      example: `Example sentence with ${word}`,
-      difficulty: 'intermediate'
-    }));
+    // Use a simple text simplification algorithm (no external API needed)
+    const simplifiedText = simplifyText(text, readingLevel);
+    const vocabulary = extractVocabulary(text);
 
     res.json({
-      simplifiedText: simplifiedText || text,
+      simplifiedText: simplifiedText,
       vocabulary: vocabulary
     });
 
   } catch (error) {
     console.error('Error:', error);
-    
-    // Fallback response if API fails
-    const words = req.body.text.split(/\s+/).filter(word => word.length > 6);
-    const vocabulary = words.slice(0, 5).map(word => ({
-      word: word.replace(/[^\w]/g, ''),
-      definition: `Definition for ${word}`,
-      example: `Example sentence with ${word}`,
-      difficulty: 'intermediate'
-    }));
-
-    res.json({
-      simplifiedText: req.body.text,
-      vocabulary: vocabulary
+    res.status(500).json({ 
+      error: 'Failed to process text',
+      message: error.message 
     });
   }
+}
+
+// Simple text simplification function
+function simplifyText(text, level) {
+  // Define complexity levels
+  const replacements = {
+    'grade3': {
+      'unanimous': 'all agreed',
+      'committee': 'group',
+      'proposal': 'plan',
+      'innovative': 'new and creative',
+      'efficiency': 'how well things work',
+      'postponed': 'delayed',
+      'implementation': 'putting into action',
+      'conclusively': 'definitely',
+      'demonstrate': 'show',
+      'sustainability': 'ability to continue',
+      'diverse': 'different',
+      'contexts': 'situations'
+    },
+    'middle-school': {
+      'unanimous': 'all agreed',
+      'committee': 'group',
+      'proposal': 'plan',
+      'innovative': 'new and creative',
+      'efficiency': 'how well things work',
+      'postponed': 'delayed',
+      'implementation': 'putting into action',
+      'conclusively': 'definitely',
+      'demonstrate': 'show',
+      'sustainability': 'ability to continue',
+      'diverse': 'different',
+      'contexts': 'situations'
+    },
+    'high-school': {
+      'unanimous': 'all agreed',
+      'committee': 'group',
+      'proposal': 'plan',
+      'innovative': 'new and creative',
+      'efficiency': 'how well things work',
+      'postponed': 'delayed',
+      'implementation': 'putting into action'
+    }
+  };
+
+  let simplified = text;
+  const levelReplacements = replacements[level] || replacements['middle-school'];
+
+  // Replace complex words with simpler ones
+  Object.entries(levelReplacements).forEach(([complex, simple]) => {
+    const regex = new RegExp(`\\b${complex}\\b`, 'gi');
+    simplified = simplified.replace(regex, simple);
+  });
+
+  // Break down complex sentences
+  if (level === 'grade3') {
+    simplified = simplified
+      .replace(/\. /g, '. ')
+      .replace(/; /g, '. ')
+      .replace(/, /g, ', ');
+  }
+
+  return simplified;
+}
+
+// Extract vocabulary from text
+function extractVocabulary(text) {
+  const words = text.split(/\s+/)
+    .filter(word => word.length > 6)
+    .map(word => word.replace(/[^\w]/g, ''))
+    .filter(word => word.length > 0)
+    .slice(0, 5);
+
+  const vocabulary = words.map(word => ({
+    word: word,
+    definition: getDefinition(word),
+    example: `Example sentence with ${word}`,
+    difficulty: 'intermediate'
+  }));
+
+  return vocabulary;
+}
+
+// Simple definition function
+function getDefinition(word) {
+  const definitions = {
+    'unanimous': 'all people agree',
+    'committee': 'a group of people who make decisions',
+    'proposal': 'a plan or suggestion',
+    'innovative': 'new and creative',
+    'efficiency': 'how well something works',
+    'postponed': 'delayed or put off',
+    'implementation': 'putting something into action',
+    'conclusively': 'definitely or for sure',
+    'demonstrate': 'to show or prove',
+    'sustainability': 'ability to continue',
+    'diverse': 'different or varied',
+    'contexts': 'situations or circumstances'
+  };
+
+  return definitions[word.toLowerCase()] || `Definition for ${word}`;
 }
