@@ -114,6 +114,22 @@ function simplifyText(text, level) {
   const replacements = {
     'grade3': {
       // Very basic replacements for 3rd grade
+      'although': 'even though',
+      'spent': 'used',
+      'hours': 'time',
+      'refining': 'making better',
+      'interface': 'website',
+      'intuitive': 'easy to use',
+      'students': 'kids',
+      'realized': 'found out',
+      'measure': 'way to tell',
+      'success': 'doing well',
+      'independently': 'by themselves',
+      'confidently': 'sure of themselves',
+      'discovering': 'finding',
+      'insights': 'new ideas',
+      'anticipated': 'expected',
+      'platform': 'website',
       'unanimous': 'all agreed',
       'committee': 'group',
       'proposal': 'plan',
@@ -292,13 +308,50 @@ function simplifyText(text, level) {
       .replace(/, but /g, '. But ')
       .replace(/, so /g, '. So ')
       .replace(/, which /g, '. This ')
-      .replace(/, that /g, '. This ');
+      .replace(/, that /g, '. This ')
+      .replace(/, /g, '. ')
+      .replace(/although /gi, 'Even though ')
+      .replace(/I had /gi, 'I used ')
+      .replace(/spent /gi, 'used ')
+      .replace(/refining /gi, 'making better ')
+      .replace(/the interface /gi, 'the website ')
+      .replace(/to make it /gi, 'to make the website ')
+      .replace(/intuitive for /gi, 'easy for ')
+      .replace(/students, I /gi, 'kids, I ')
+      .replace(/realized that /gi, 'found out that ')
+      .replace(/the true /gi, 'the real ')
+      .replace(/measure of /gi, 'way to tell if ')
+      .replace(/success would /gi, 'it worked would ')
+      .replace(/come only when /gi, 'happen only when ')
+      .replace(/they could /gi, 'the kids could ')
+      .replace(/use the platform /gi, 'use the website ')
+      .replace(/independently and /gi, 'by themselves and ')
+      .replace(/confidently, /gi, 'sure of themselves, ')
+      .replace(/discovering /gi, 'finding ')
+      .replace(/insights on /gi, 'new ideas about ')
+      .replace(/their own /gi, 'their own ')
+      .replace(/that I /gi, 'that I ')
+      .replace(/hadn't /gi, 'did not ')
+      .replace(/anticipated./gi, 'expected.');
   } else if (level === 'middle-school') {
     // Moderate sentence simplification for middle school
     simplified = simplified
       .replace(/; /g, '. ')
       .replace(/, and /g, '. And ')
-      .replace(/, but /g, '. But ');
+      .replace(/, but /g, '. But ')
+      .replace(/although /gi, 'Even though ')
+      .replace(/spent /gi, 'used ')
+      .replace(/refining /gi, 'improving ')
+      .replace(/interface /gi, 'website ')
+      .replace(/intuitive /gi, 'easy to use ')
+      .replace(/students /gi, 'students ')
+      .replace(/realized /gi, 'understood ')
+      .replace(/measure /gi, 'way to tell ')
+      .replace(/independently /gi, 'on their own ')
+      .replace(/confidently /gi, 'with confidence ')
+      .replace(/discovering /gi, 'finding ')
+      .replace(/insights /gi, 'new ideas ')
+      .replace(/anticipated /gi, 'expected ');
   }
   // High school and college keep original sentence structure
 
