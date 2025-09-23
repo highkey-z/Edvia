@@ -27,6 +27,16 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Edvia API is running',
+    version: '1.0.0',
+    endpoints: ['/api/health', '/api/text', '/api/translation']
+  });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Edvia API is running' });
@@ -56,7 +66,7 @@ app.use('*', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Edvia server running on port ${PORT}`);
   console.log(`📚 API available at http://localhost:${PORT}/api`);
 });
