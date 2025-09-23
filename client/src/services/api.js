@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001/api',
+  baseURL: 'https://edvia.onrender.com/api',
   timeout: 30000, // 30 second timeout for AI processing
   headers: {
     'Content-Type': 'application/json',
