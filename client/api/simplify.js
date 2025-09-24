@@ -659,8 +659,4 @@ function getDifficulty(word, level) {
   return difficulties[level] || 'intermediate';
 }
 
-// Export functions for testing
-module.exports = {
-  simplifyText,
-  extractVocabulary
-};
+// Functions are available within the module scope
