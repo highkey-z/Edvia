@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  console.log('🚀 Function called with method:', req.method);
+  console.log('🚀 NEW VERSION - Function called with method:', req.method);
   
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
