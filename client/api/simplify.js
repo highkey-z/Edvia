@@ -48,10 +48,24 @@ export default async function handler(req, res) {
     }
 
     console.log('🤖 Using OpenAI for text simplification');
-    // Use OpenAI for text simplification
-    const result = await simplifyWithOpenAI(text, readingLevel, includeSummary);
-    console.log('✅ OpenAI processing completed');
-    res.json(result);
+    try {
+      // Use OpenAI for text simplification
+      const result = await simplifyWithOpenAI(text, readingLevel, includeSummary);
+      console.log('✅ OpenAI processing completed');
+      res.json(result);
+    } catch (error) {
+      if (error.message === 'RATE_LIMIT_EXCEEDED') {
+        console.log('⚠️ OpenAI rate limit exceeded, using local algorithm instead');
+        const simplifiedText = simplifyText(text, readingLevel);
+        const vocabulary = extractVocabulary(text, readingLevel);
+        res.json({
+          simplifiedText: simplifiedText,
+          vocabulary: vocabulary
+        });
+      } else {
+        throw error;
+      }
+    }
 
   } catch (error) {
     console.error('❌ Error in handler:', error);
@@ -113,6 +127,13 @@ Simplified text:`;
     if (!response.ok) {
       const errorData = await response.text();
       console.error('OpenAI API error:', response.status, errorData);
+      
+      // Handle rate limiting by falling back to local algorithm
+      if (response.status === 429) {
+        console.log('⚠️ OpenAI rate limit exceeded, falling back to local algorithm');
+        throw new Error('RATE_LIMIT_EXCEEDED');
+      }
+      
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
