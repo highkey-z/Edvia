@@ -86,7 +86,7 @@ async function simplifyWithGemini(text, level) {
     const instruction = levelInstructions[level] || levelInstructions['middle-school'];
     const prompt = `${instruction}\n\nOriginal text: "${text}"\n\nSimplified text:`;
 
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDgwdY3M5aLXrCV6Zg2S_lS65PgXZWmakY', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY || 'AIzaSyDgwdY3M5aLXrCV6Zg2S_lS65PgXZWmakY'}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

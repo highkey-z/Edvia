@@ -1,5 +1,66 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
+// Simple definition fallbacks
+function getSimpleDefinition(word, level) {
+  const definitions = {
+    'cornerstone': {
+      'basic': 'the most important part',
+      'intermediate': 'the most important part or foundation',
+      'advanced': 'a fundamental principle or foundation',
+      'expert': 'a fundamental principle or foundation'
+    },
+    'democracy': {
+      'basic': 'government by the people',
+      'intermediate': 'government where people vote to make decisions',
+      'advanced': 'a system of government by the people',
+      'expert': 'a political system based on popular sovereignty'
+    },
+    'right': {
+      'basic': 'something you are allowed to do',
+      'intermediate': 'something you are allowed to do',
+      'advanced': 'a legal or moral entitlement',
+      'expert': 'a legal or moral entitlement'
+    },
+    'vote': {
+      'basic': 'to choose someone or something',
+      'intermediate': 'to choose someone or something in an election',
+      'advanced': 'to express a choice in an election',
+      'expert': 'to express a choice in an election'
+    }
+  };
+  
+  const wordDefs = definitions[word.toLowerCase()];
+  if (wordDefs && wordDefs[level]) {
+    return wordDefs[level];
+  }
+  
+  return `an important word meaning something significant`;
+}
+
+function getSimpleExample(word, level) {
+  const examples = {
+    'cornerstone': {
+      'basic': 'Freedom is the cornerstone of our country.',
+      'intermediate': 'Education is the cornerstone of a good society.',
+      'advanced': 'Trust is the cornerstone of any relationship.',
+      'expert': 'The Constitution is the cornerstone of our democracy.'
+    },
+    'democracy': {
+      'basic': 'We live in a democracy where people vote.',
+      'intermediate': 'In a democracy, citizens choose their leaders.',
+      'advanced': 'Democracy allows citizens to participate in government.',
+      'expert': 'Democracy ensures political equality and participation.'
+    }
+  };
+  
+  const wordExamples = examples[word.toLowerCase()];
+  if (wordExamples && wordExamples[level]) {
+    return wordExamples[level];
+  }
+  
+  return `This word is used in important sentences.`;
+}
+
 // Reading level configurations
 const readingLevelConfigs = {
   'grade3': {
@@ -40,7 +101,7 @@ async function processTextWithGemini(text, readingLevel = 'middle-school', inclu
 
   try {
     // Initialize Gemini
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'demo-key');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyDgwdY3M5aLXrCV6Zg2S_lS65PgXZWmakY');
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     // Prepare the prompt based on what we need
@@ -120,11 +181,11 @@ Return a JSON object with this structure:
       // Clean up and validate vocabulary entries
       result.vocabulary = result.vocabulary.map(item => ({
         word: item.word || '',
-        definition: item.definition || '',
-        example: item.example || '',
+        definition: item.definition && !item.definition.includes('Definition for') ? item.definition : getSimpleDefinition(item.word, config.vocabularyLevel),
+        example: item.example && !item.example.includes('Example sentence') ? item.example : getSimpleExample(item.word, config.vocabularyLevel),
         difficulty: ['basic', 'intermediate', 'advanced'].includes(item.difficulty) 
           ? item.difficulty 
-          : 'intermediate'
+          : config.vocabularyLevel
       })).filter(item => item.word && item.definition);
 
       return result;
@@ -183,7 +244,7 @@ async function translateTextWithGemini(text, targetLanguage, readingLevel = 'mid
   }
 
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'demo-key');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyDgwdY3M5aLXrCV6Zg2S_lS65PgXZWmakY');
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `You are a professional translator and educational assistant. 
