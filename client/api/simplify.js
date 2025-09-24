@@ -27,15 +27,22 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    // Use local algorithm for reliable text simplification (updated)
-    console.log('🤖 Using local algorithm for text simplification');
-    const simplifiedText = simplifyText(text, readingLevel);
-    const vocabulary = extractVocabulary(text, readingLevel);
-    console.log('✅ Local algorithm completed');
-    res.json({
-      simplifiedText: simplifiedText,
-      vocabulary: vocabulary
-    });
+    // Try Hugging Face API first, fallback to local algorithm
+    console.log('🤖 Attempting Hugging Face API for text simplification');
+    try {
+      const result = await simplifyWithHuggingFace(text, readingLevel);
+      console.log('✅ Hugging Face processing completed');
+      res.json(result);
+    } catch (error) {
+      console.log('⚠️ Hugging Face API failed, using local algorithm instead');
+      console.log('Error:', error.message);
+      const simplifiedText = simplifyText(text, readingLevel);
+      const vocabulary = extractVocabulary(text, readingLevel);
+      res.json({
+        simplifiedText: simplifiedText,
+        vocabulary: vocabulary
+      });
+    }
 
   } catch (error) {
     console.error('❌ Error in handler:', error);
@@ -66,18 +73,18 @@ async function simplifyWithHuggingFace(text, level) {
     const instruction = levelInstructions[level] || levelInstructions['middle-school'];
     const prompt = `${instruction}\n\nText: "${text}"\n\nSimplified:`;
 
-    const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium', {
+    const response = await fetch('https://api-inference.huggingface.co/models/facebook/bart-large-cnn', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.HUGGING_FACE_API_KEY || 'hf_your_token_here'}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        inputs: prompt,
+        inputs: text,
         parameters: {
-          max_length: 500,
-          temperature: 0.7,
-          do_sample: true
+          max_length: 200,
+          min_length: 50,
+          do_sample: false
         }
       })
     });
@@ -90,16 +97,24 @@ async function simplifyWithHuggingFace(text, level) {
     console.log('✅ Hugging Face API response received');
     
     let simplifiedText = text;
-    if (data && data[0] && data[0].generated_text) {
-      // Extract the simplified text from the response
-      const generated = data[0].generated_text;
-      const lines = generated.split('\n');
-      const simplifiedLine = lines.find(line => line.toLowerCase().includes('simplified:') || line.toLowerCase().includes('simplified'));
-      if (simplifiedLine) {
-        simplifiedText = simplifiedLine.replace(/simplified:\s*/i, '').trim();
-      } else {
-        simplifiedText = generated.replace(prompt, '').trim();
-      }
+    if (data && data[0] && data[0].summary_text) {
+      // BART model returns summary_text
+      simplifiedText = data[0].summary_text;
+    } else if (data && data[0] && data[0].generated_text) {
+      // Fallback for other models
+      simplifiedText = data[0].generated_text;
+    }
+    
+    // Apply level-specific adjustments if needed
+    if (level === 'grade3') {
+      // Make it even simpler for 3rd grade
+      simplifiedText = simplifiedText
+        .replace(/although/gi, 'even though')
+        .replace(/however/gi, 'but')
+        .replace(/therefore/gi, 'so')
+        .replace(/consequently/gi, 'so')
+        .replace(/furthermore/gi, 'also')
+        .replace(/moreover/gi, 'also');
     }
     
     // Extract vocabulary from original text
