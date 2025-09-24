@@ -38,6 +38,15 @@ router.post('/process', async (req, res) => {
   } catch (error) {
     console.error('Text processing error:', error);
     
+    // Handle Gemini quota exceeded with friendly message
+    if (error.message && (error.message.includes('quota') || error.message.includes('rate') || error.message.includes('429') || error.message.includes('403'))) {
+      return res.status(503).json({ 
+        error: 'Sorry, Gemini is in free tier at the moment so simplifications are limited. Stay tuned for when an advanced tier is implemented!',
+        simplifiedText: text, // Return original text as fallback
+        vocabulary: []
+      });
+    }
+    
     if (error.code === 'insufficient_quota') {
       return res.status(402).json({ 
         error: 'API quota exceeded. Please check your OpenAI account.' 

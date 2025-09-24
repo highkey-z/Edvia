@@ -34,8 +34,21 @@ export default async function handler(req, res) {
       console.log('✅ Gemini processing completed');
       res.json(result);
     } catch (error) {
-      console.log('⚠️ Gemini API failed, using local algorithm instead');
+      console.log('⚠️ Gemini API failed, checking error type');
       console.log('Error:', error.message);
+      
+      // Handle Gemini quota exceeded with friendly message
+      if (error.message && (error.message.includes('quota') || error.message.includes('rate') || error.message.includes('429') || error.message.includes('403'))) {
+        res.status(503).json({
+          error: 'Sorry, Gemini is in free tier at the moment so simplifications are limited. Stay tuned for when an advanced tier is implemented!',
+          simplifiedText: text, // Return original text as fallback
+          vocabulary: []
+        });
+        return;
+      }
+      
+      // Fallback to local algorithm for other errors
+      console.log('Using local algorithm as fallback');
       const simplifiedText = simplifyText(text, readingLevel);
       const vocabulary = extractVocabulary(text, readingLevel);
       res.json({
