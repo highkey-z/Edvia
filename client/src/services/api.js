@@ -3,7 +3,7 @@ import axios from 'axios';
 // Create axios instance with base configuration
 const api = axios.create({
   baseURL: process.env.NODE_ENV === 'development' 
-    ? 'https://edvia-c3ux-gdloykt9o-highkeys-projects.vercel.app/api'
+    ? 'https://edvia-c3ux-gwvifgezw-highkeys-projects.vercel.app/api'
     : '/api',
   timeout: 30000, // 30 second timeout for AI processing
   headers: {

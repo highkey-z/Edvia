@@ -27,14 +27,14 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    // Try Hugging Face API first, fallback to local algorithm
-    console.log('🤖 Attempting Hugging Face API for text simplification');
+    // Try Gemini API first, fallback to local algorithm
+    console.log('🤖 Attempting Gemini API for text simplification');
     try {
-      const result = await simplifyWithHuggingFace(text, readingLevel);
-      console.log('✅ Hugging Face processing completed');
+      const result = await simplifyWithGemini(text, readingLevel);
+      console.log('✅ Gemini processing completed');
       res.json(result);
     } catch (error) {
-      console.log('⚠️ Hugging Face API failed, using local algorithm instead');
+      console.log('⚠️ Gemini API failed, using local algorithm instead');
       console.log('Error:', error.message);
       const simplifiedText = simplifyText(text, readingLevel);
       const vocabulary = extractVocabulary(text, readingLevel);
@@ -58,63 +58,51 @@ export default async function handler(req, res) {
   }
 }
 
-// Hugging Face API text simplification
-async function simplifyWithHuggingFace(text, level) {
+// Gemini API text simplification
+async function simplifyWithGemini(text, level) {
   try {
-    console.log('🔍 Starting Hugging Face API call...');
+    console.log('🔍 Starting Gemini API call...');
     
     const levelInstructions = {
-      'grade3': 'Simplify this text for 3rd grade students. Use very simple words and short sentences.',
-      'middle-school': 'Simplify this text for middle school students. Use clear, simple language.',
-      'high-school': 'Simplify this text for high school students. Use clear language with some advanced vocabulary.',
-      'college': 'Simplify this text for college students. Use clear, sophisticated language.'
+      'grade3': 'Rewrite this text for a 3rd grade reading level. Use very simple words, short sentences, and basic vocabulary. Make it easy for young children to understand.',
+      'middle-school': 'Rewrite this text for a middle school reading level. Use clear, simple language with moderate complexity. Make it appropriate for 6th-8th grade students.',
+      'high-school': 'Rewrite this text for a high school reading level. Use clear language with some advanced vocabulary. Make it appropriate for 9th-12th grade students.',
+      'college': 'Rewrite this text for a college reading level. Use clear, sophisticated language while maintaining the original meaning and complexity.'
     };
 
     const instruction = levelInstructions[level] || levelInstructions['middle-school'];
-    const prompt = `${instruction}\n\nText: "${text}"\n\nSimplified:`;
+    const prompt = `${instruction}\n\nOriginal text: "${text}"\n\nSimplified text:`;
 
-    const response = await fetch('https://api-inference.huggingface.co/models/facebook/bart-large-cnn', {
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDgwdY3M5aLXrCV6Zg2S_lS65PgXZWmakY', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.HUGGING_FACE_API_KEY || 'hf_your_token_here'}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        inputs: text,
-        parameters: {
-          max_length: 200,
-          min_length: 50,
-          do_sample: false
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 1000,
+          topP: 0.8,
+          topK: 40
         }
       })
     });
 
     if (!response.ok) {
-      throw new Error(`Hugging Face API error: ${response.status}`);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('✅ Hugging Face API response received');
+    console.log('✅ Gemini API response received');
     
     let simplifiedText = text;
-    if (data && data[0] && data[0].summary_text) {
-      // BART model returns summary_text
-      simplifiedText = data[0].summary_text;
-    } else if (data && data[0] && data[0].generated_text) {
-      // Fallback for other models
-      simplifiedText = data[0].generated_text;
-    }
-    
-    // Apply level-specific adjustments if needed
-    if (level === 'grade3') {
-      // Make it even simpler for 3rd grade
-      simplifiedText = simplifiedText
-        .replace(/although/gi, 'even though')
-        .replace(/however/gi, 'but')
-        .replace(/therefore/gi, 'so')
-        .replace(/consequently/gi, 'so')
-        .replace(/furthermore/gi, 'also')
-        .replace(/moreover/gi, 'also');
+    if (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+      simplifiedText = data.candidates[0].content.parts[0].text.trim();
     }
     
     // Extract vocabulary from original text
@@ -126,7 +114,7 @@ async function simplifyWithHuggingFace(text, level) {
     };
 
   } catch (error) {
-    console.error('❌ Hugging Face API error:', error);
+    console.error('❌ Gemini API error:', error);
     throw error;
   }
 }
