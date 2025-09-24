@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    // Use local algorithm for reliable text simplification
+    // Use local algorithm for reliable text simplification (updated)
     console.log('🤖 Using local algorithm for text simplification');
     const simplifiedText = simplifyText(text, readingLevel);
     const vocabulary = extractVocabulary(text, readingLevel);
@@ -658,3 +658,9 @@ function getDifficulty(word, level) {
   
   return difficulties[level] || 'intermediate';
 }
+
+// Export functions for testing
+module.exports = {
+  simplifyText,
+  extractVocabulary
+};
