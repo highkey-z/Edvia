@@ -27,22 +27,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    // Try Hugging Face API first, fallback to local algorithm
-    console.log('🤖 Attempting Hugging Face API for text simplification');
-    try {
-      const result = await simplifyWithHuggingFace(text, readingLevel);
-      console.log('✅ Hugging Face processing completed');
-      res.json(result);
-    } catch (error) {
-      console.log('⚠️ Hugging Face API failed, using local algorithm instead');
-      console.log('Error:', error.message);
-      const simplifiedText = simplifyText(text, readingLevel);
-      const vocabulary = extractVocabulary(text, readingLevel);
-      res.json({
-        simplifiedText: simplifiedText,
-        vocabulary: vocabulary
-      });
-    }
+    // Use local algorithm for reliable text simplification
+    console.log('🤖 Using local algorithm for text simplification');
+    const simplifiedText = simplifyText(text, readingLevel);
+    const vocabulary = extractVocabulary(text, readingLevel);
+    console.log('✅ Local algorithm completed');
+    res.json({
+      simplifiedText: simplifiedText,
+      vocabulary: vocabulary
+    });
 
   } catch (error) {
     console.error('❌ Error in handler:', error);
