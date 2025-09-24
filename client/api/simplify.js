@@ -33,6 +33,8 @@ export default async function handler(req, res) {
     console.log('🔑 API key length:', openaiApiKey ? openaiApiKey.length : 0);
     console.log('🔑 API key starts with:', openaiApiKey ? openaiApiKey.substring(0, 10) + '...' : 'none');
     console.log('🔍 All environment variables:', Object.keys(process.env).filter(key => key.includes('OPENAI') || key.includes('API')));
+    console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
+    console.log('🔍 VERCEL:', process.env.VERCEL);
     
     if (!openaiApiKey) {
       console.log('⚠️ No OpenAI API key found, using local algorithm');
