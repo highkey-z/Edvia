@@ -1,43 +1,60 @@
 export default async function handler(req, res) {
+  console.log('🚀 Function called with method:', req.method);
+  
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
+    console.log('✅ Handling OPTIONS request');
     res.status(200).end();
     return;
   }
 
-    if (req.method !== 'POST') {
+  if (req.method !== 'POST') {
+    console.log('❌ Method not allowed:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    console.log('📝 Processing POST request');
     const { text, readingLevel = 'middle-school', includeSummary = false } = req.body;
+    console.log('📊 Request data:', { textLength: text?.length, readingLevel, includeSummary });
 
     if (!text) {
+      console.log('❌ No text provided');
       return res.status(400).json({ error: 'Text is required' });
     }
 
     // Check for OpenAI API key
     const openaiApiKey = process.env.OPENAI_API_KEY;
+    console.log('🔑 OpenAI API key present:', !!openaiApiKey);
+    
     if (!openaiApiKey) {
-      console.log('No OpenAI API key found, using local algorithm');
+      console.log('⚠️ No OpenAI API key found, using local algorithm');
       const simplifiedText = simplifyText(text, readingLevel);
       const vocabulary = extractVocabulary(text, readingLevel);
+      console.log('✅ Local algorithm completed');
       return res.json({
         simplifiedText: simplifiedText,
         vocabulary: vocabulary
       });
     }
 
+    console.log('🤖 Using OpenAI for text simplification');
     // Use OpenAI for text simplification
     const result = await simplifyWithOpenAI(text, readingLevel, includeSummary);
+    console.log('✅ OpenAI processing completed');
     res.json(result);
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('❌ Error in handler:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     res.status(500).json({ 
       error: 'Failed to process text',
       message: error.message 
