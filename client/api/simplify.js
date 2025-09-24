@@ -30,6 +30,8 @@ export default async function handler(req, res) {
     // Check for OpenAI API key
     const openaiApiKey = process.env.OPENAI_API_KEY;
     console.log('🔑 OpenAI API key present:', !!openaiApiKey);
+    console.log('🔑 API key length:', openaiApiKey ? openaiApiKey.length : 0);
+    console.log('🔑 API key starts with:', openaiApiKey ? openaiApiKey.substring(0, 10) + '...' : 'none');
     
     if (!openaiApiKey) {
       console.log('⚠️ No OpenAI API key found, using local algorithm');
