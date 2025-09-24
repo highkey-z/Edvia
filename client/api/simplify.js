@@ -27,44 +27,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    // Check for OpenAI API key
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    console.log('🔑 OpenAI API key present:', !!openaiApiKey);
-    console.log('🔑 API key length:', openaiApiKey ? openaiApiKey.length : 0);
-    console.log('🔑 API key starts with:', openaiApiKey ? openaiApiKey.substring(0, 10) + '...' : 'none');
-    console.log('🔍 All environment variables:', Object.keys(process.env).filter(key => key.includes('OPENAI') || key.includes('API')));
-    console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
-    console.log('🔍 VERCEL:', process.env.VERCEL);
-    
-    if (!openaiApiKey) {
-      console.log('⚠️ No OpenAI API key found, using local algorithm');
+    // Try Hugging Face API first, fallback to local algorithm
+    console.log('🤖 Attempting Hugging Face API for text simplification');
+    try {
+      const result = await simplifyWithHuggingFace(text, readingLevel);
+      console.log('✅ Hugging Face processing completed');
+      res.json(result);
+    } catch (error) {
+      console.log('⚠️ Hugging Face API failed, using local algorithm instead');
+      console.log('Error:', error.message);
       const simplifiedText = simplifyText(text, readingLevel);
       const vocabulary = extractVocabulary(text, readingLevel);
-      console.log('✅ Local algorithm completed');
-      return res.json({
+      res.json({
         simplifiedText: simplifiedText,
         vocabulary: vocabulary
       });
-    }
-
-    console.log('🤖 Using OpenAI for text simplification');
-    try {
-      // Use OpenAI for text simplification
-      const result = await simplifyWithOpenAI(text, readingLevel, includeSummary);
-      console.log('✅ OpenAI processing completed');
-      res.json(result);
-    } catch (error) {
-      if (error.message === 'RATE_LIMIT_EXCEEDED') {
-        console.log('⚠️ OpenAI rate limit exceeded, using local algorithm instead');
-        const simplifiedText = simplifyText(text, readingLevel);
-        const vocabulary = extractVocabulary(text, readingLevel);
-        res.json({
-          simplifiedText: simplifiedText,
-          vocabulary: vocabulary
-        });
-      } else {
-        throw error;
-      }
     }
 
   } catch (error) {
@@ -78,6 +55,71 @@ export default async function handler(req, res) {
       error: 'Failed to process text',
       message: error.message 
     });
+  }
+}
+
+// Hugging Face API text simplification
+async function simplifyWithHuggingFace(text, level) {
+  try {
+    console.log('🔍 Starting Hugging Face API call...');
+    
+    const levelInstructions = {
+      'grade3': 'Simplify this text for 3rd grade students. Use very simple words and short sentences.',
+      'middle-school': 'Simplify this text for middle school students. Use clear, simple language.',
+      'high-school': 'Simplify this text for high school students. Use clear language with some advanced vocabulary.',
+      'college': 'Simplify this text for college students. Use clear, sophisticated language.'
+    };
+
+    const instruction = levelInstructions[level] || levelInstructions['middle-school'];
+    const prompt = `${instruction}\n\nText: "${text}"\n\nSimplified:`;
+
+    const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.HUGGING_FACE_API_KEY || 'hf_your_token_here'}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        inputs: prompt,
+        parameters: {
+          max_length: 500,
+          temperature: 0.7,
+          do_sample: true
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Hugging Face API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ Hugging Face API response received');
+    
+    let simplifiedText = text;
+    if (data && data[0] && data[0].generated_text) {
+      // Extract the simplified text from the response
+      const generated = data[0].generated_text;
+      const lines = generated.split('\n');
+      const simplifiedLine = lines.find(line => line.toLowerCase().includes('simplified:') || line.toLowerCase().includes('simplified'));
+      if (simplifiedLine) {
+        simplifiedText = simplifiedLine.replace(/simplified:\s*/i, '').trim();
+      } else {
+        simplifiedText = generated.replace(prompt, '').trim();
+      }
+    }
+    
+    // Extract vocabulary from original text
+    const vocabulary = extractVocabulary(text, level);
+    
+    return {
+      simplifiedText: simplifiedText,
+      vocabulary: vocabulary
+    };
+
+  } catch (error) {
+    console.error('❌ Hugging Face API error:', error);
+    throw error;
   }
 }
 
